@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かな入力トレーナー — JIS配列</title>
+<style>
+  :root {
+    --bg: #0c0f1a;
+    --panel: #141929;
+    --panel2: #1c2236;
+    --ink: #eef1fb;
+    --muted: #8b94b8;
+    --accent: #6b9fff;
+    --accent2: #4a7de8;
+    --good: #3dd68c;
+    --bad: #ff5d6c;
+    --key: #2a3050;
+    --keytop: #333b63;
+    --keyedge: #1b2039;
+    --home: #3b4680;
+    --jp: #3a5560;
+    --f1: #ff8f6b; --f2: #ffcf5c; --f3: #8ee06b; --f4: #6bd6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Yu Gothic UI", "Hiragino Sans", "Meiryo", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1000px 500px at 50% -5%, #1a2240, var(--bg) 55%);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 20px 16px 48px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  header { margin-bottom: 20px; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid #252d48;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.22);
+  }
+
+  .lessons {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+  }
+  .lesson {
+    background: var(--panel2);
+    border: 1px solid #2a3150;
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .lesson:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .lesson h3 { margin: 0 0 4px; font-size: 15px; }
+  .lesson p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    background: #2a3150;
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+
+  .prompt {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .target {
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    line-height: 1.5;
+    background: var(--panel2);
+    border-radius: 12px;
+    padding: 20px 22px;
+    min-height: 80px;
+    word-break: break-word;
+  }
+  .target .done { color: var(--muted); opacity: .45; }
+  .target .cur {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 5px;
+    padding: 2px 6px;
+    animation: blink 1s steps(2) infinite;
+  }
+  .target .err { background: var(--bad); color: #fff; border-radius: 5px; padding: 2px 6px; }
+  @keyframes blink { 50% { opacity: .55; } }
+
+  .step-hint {
+    font-size: 18px;
+    color: var(--accent);
+    margin-top: 12px;
+    min-height: 28px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .meaning { font-size: 14px; color: var(--muted); margin-top: 6px; min-height: 20px; }
+
+  .stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .stat {
+    background: var(--panel2);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-width: 88px;
+  }
+  .stat b { display: block; font-size: 22px; font-weight: 700; }
+  .stat span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .4px;
+  }
+
+  .hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.55;
+  }
+  .hint b { color: var(--accent); }
+
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid #2a3150;
+    color: var(--muted);
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .hidden { display: none !important; }
+
+  /* keyboard */
+  .kb {
+    background: var(--panel2);
+    border-radius: 16px;
+    padding: 14px;
+    overflow-x: auto;
+  }
+  .krow {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+    justify-content: center;
+    min-width: 880px;
+  }
+  .key {
+    position: relative;
+    background: linear-gradient(var(--keytop), var(--key));
+    border: 1px solid var(--keyedge);
+    border-bottom-width: 3px;
+    border-radius: 8px;
+    height: 50px;
+    width: 50px;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--ink);
+    font-size: 12px;
+    transition: .08s;
+    user-select: none;
+    cursor: default;
+  }
+  .key .top { font-size: 10px; color: var(--muted); line-height: 1; }
+  .key .main { font-size: 14px; font-weight: 600; line-height: 1.1; }
+  .key .jp { font-size: 11px; color: #9fb4c8; line-height: 1; font-weight: 600; }
+  .key.w15 { width: 76px; }
+  .key.w175 { width: 90px; }
+  .key.w225 { width: 118px; }
+  .key.w6 { width: 280px; }
+  .key.wtab { width: 72px; }
+  .key.wbksp { width: 88px; }
+  .key.wenter { width: 72px; }
+  .key.home { box-shadow: inset 0 0 0 2px var(--home); }
+  .key.jpkey { background: linear-gradient(#3a5560, #2f4650); }
+  .key.mod { background: linear-gradient(#3a3350, #2b2740); color: var(--muted); }
+  .key.next {
+    background: linear-gradient(var(--accent), var(--accent2));
+    color: #fff;
+    transform: translateY(1px);
+    box-shadow: 0 0 0 3px rgba(107,159,255,.35), 0 6px 16px rgba(107,159,255,.4);
+  }
+  .key.next .top, .key.next .jp { color: #e7edff; }
+  .key.press { transform: translateY(2px); border-bottom-width: 1px; filter: brightness(1.35); }
+  .key.wrong { background: linear-gradient(var(--bad), #d83f4e) !important; color: #fff; }
+  .key .fbar {
+    position: absolute;
+    bottom: 2px;
+    left: 5px;
+    right: 5px;
+    height: 3px;
+    border-radius: 2px;
+    opacity: .85;
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .legend .sw {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: -1px;
+  }
+  .legend .toggle { margin-left: auto; display: flex; gap: 14px; }
+  .legend label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+
+  .banner {
+    background: linear-gradient(90deg, #1a2538, #1c2a42);
+    border: 1px solid #2d3d5c;
+    color: #b8c8e8;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  kbd {
+    background: #2a3150;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 12px;
+    border: 1px solid #3a4467;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⌨️ かな入力トレーナー</h1>
+    <p class="sub">JIS配列キーボードで、刻印されたかなを直接打つ練習ツールです。濁点は <kbd>゛</kbd> キー、半濁点は <kbd>゜</kbd> キー、小さいかなは <kbd>Shift</kbd> を使います。</p>
+  </header>
+
+  <div class="banner">
+    💡 <b>使い方：</b>レッスンを選び、表示されたかなをキーボードで入力してください。次に押すキーがハイライトされます。物理的なJISキーボード＋かな入力モード（または英数OFF）で練習するのがおすすめです。
+  </div>
+
+  <div id="picker" class="card">
+    <div class="prompt"><span>レッスンを選んでください — あ行から順に進めるのがおすすめです</span></div>
+    <div class="lessons" id="lessonGrid"></div>
+  </div>
+
+  <div id="practice" class="card hidden">
+    <div class="prompt">
+      <span id="pTitle">練習</span>
+      <span class="row">
+        <button class="btn ghost" id="btnReset">↻ やり直す</button>
+        <button class="btn ghost" id="btnBack">← レッスン一覧</button>
+      </span>
+    </div>
+    <div class="target" id="target"></div>
+    <div class="step-hint" id="stepHint"></div>
+    <div class="meaning" id="meaning"></div>
+    <div class="stats">
+      <div class="stat"><b id="sKpm">0</b><span>打鍵/分</span></div>
+      <div class="stat"><b id="sAcc">100%</b><span>正確率</span></div>
+      <div class="stat"><b id="sProg">0/0</b><span>進捗</span></div>
+      <div class="stat"><b id="sErr">0</b><span>ミス</span></div>
+    </div>
+    <div class="hint" id="pHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="kb" id="kb"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--f1)"></span>人差し指</span>
+      <span><span class="sw" style="background:var(--f2)"></span>中指</span>
+      <span><span class="sw" style="background:var(--f3)"></span>薬指</span>
+      <span><span class="sw" style="background:var(--f4)"></span>小指</span>
+      <span><span class="sw" style="background:var(--jp)"></span>JIS専用</span>
+      <span class="toggle">
+        <label><input type="checkbox" id="tgFinger" checked> 指の色</label>
+        <label><input type="checkbox" id="tgJp" checked> かな表示</label>
+      </span>
+    </div>
+  </div>
+
+  <div class="hint">
+    <b>かな入力の基本：</b>
+    「が」＝ <kbd>か</kbd> → <kbd>゛</kbd>　｜
+    「ぱ」＝ <kbd>は</kbd> → <kbd>゜</kbd>　｜
+    「ゃ」＝ <kbd>Shift</kbd>＋<kbd>や</kbd>　｜
+    「っ」＝ <kbd>Shift</kbd>＋<kbd>つ</kbd>　｜
+    長音「ー」＝ <kbd>^</kbd> キー（¥の左）
+  </div>
+</div>
+
+<script>
+const F = { LPINKY:8, LRING:7, LMID:6, LINDEX:5, RINDEX:4, RMID:3, RRING:2, RPINKY:1, THUMB:0 };
+
+function colorFor(f) {
+  if (f === 0) return 'var(--thumb, #8a94b8)';
+  const g = (f === 5 || f === 4) ? '--f1' : (f === 6 || f === 3) ? '--f2' : (f === 7 || f === 2) ? '--f3' : '--f4';
+  return `var(${g})`;
+}
+
+const rows = [
+  [
+    { code:'Backquote', main:'半/全', shift:'漢字', jp:'', finger:8, cls:'mod' },
+    { code:'Digit1', main:'1', shift:'!', jp:'ぬ', finger:8 },
+    { code:'Digit2', main:'2', shift:'"', jp:'ふ', finger:7 },
+    { code:'Digit3', main:'3', shift:'#', jp:'あ', finger:6 },
+    { code:'Digit4', main:'4', shift:'$', jp:'う', finger:5 },
+    { code:'Digit5', main:'5', shift:'%', jp:'え', finger:5 },
+    { code:'Digit6', main:'6', shift:'&', jp:'お', finger:4 },
+    { code:'Digit7', main:'7', shift:"'", jp:'や', finger:4 },
+    { code:'Digit8', main:'8', shift:'(', jp:'ゆ', finger:3 },
+    { code:'Digit9', main:'9', shift:')', jp:'よ', finger:2 },
+    { code:'Digit0', main:'0', shift:'', jp:'わ', finger:1 },
+    { code:'Minus', main:'-', shift:'=', jp:'ほ', finger:1 },
+    { code:'Equal', main:'^', shift:'~', jp:'へ', finger:1 },
+    { code:'IntlYen', main:'¥', shift:'|', jp:'ー', finger:1, cls:'jpkey' },
+    { code:'Backspace', main:'⌫', shift:'', jp:'', finger:1, cls:'wbksp mod' },
+  ],
+  [
+    { code:'Tab', main:'Tab', shift:'', jp:'', finger:8, cls:'wtab mod' },
+    { code:'KeyQ', main:'q', shift:'Q', jp:'た', finger:8 },
+    { code:'KeyW', main:'w', shift:'W', jp:'て', finger:7 },
+    { code:'KeyE', main:'e', shift:'E', jp:'い', finger:6 },
+    { code:'KeyR', main:'r', shift:'R', jp:'す', finger:5 },
+    { code:'KeyT', main:'t', shift:'T', jp:'か', finger:5 },
+    { code:'KeyY', main:'y', shift:'Y', jp:'ん', finger:4 },
+    { code:'KeyU', main:'u', shift:'U', jp:'な', finger:4 },
+    { code:'KeyI', main:'i', shift:'I', jp:'に', finger:3 },
+    { code:'KeyO', main:'o', shift:'O', jp:'ら', finger:2 },
+    { code:'KeyP', main:'p', shift:'P', jp:'せ', finger:1 },
+    { code:'BracketLeft', main:'@', shift:'`', jp:'゛', finger:1, cls:'jpkey' },
+    { code:'BracketRight', main:'[', shift:'{', jp:'゜', finger:1, cls:'jpkey' },
+    { code:'Enter', main:'Enter', shift:'', jp:'', finger:1, cls:'wenter mod' },
+  ],
+  [
+    { code:'CapsLock', main:'英数', shift:'', jp:'', finger:8, cls:'w175 mod' },
+    { code:'KeyA', main:'a', shift:'A', jp:'ち', finger:8, cls:'home' },
+    { code:'KeyS', main:'s', shift:'S', jp:'と', finger:7, cls:'home' },
+    { code:'KeyD', main:'d', shift:'D', jp:'し', finger:6, cls:'home' },
+    { code:'KeyF', main:'f', shift:'F', jp:'は', finger:5, cls:'home' },
+    { code:'KeyG', main:'g', shift:'G', jp:'き', finger:5 },
+    { code:'KeyH', main:'h', shift:'H', jp:'く', finger:4 },
+    { code:'KeyJ', main:'j', shift:'J', jp:'ま', finger:4, cls:'home' },
+    { code:'KeyK', main:'k', shift:'K', jp:'の', finger:3, cls:'home' },
+    { code:'KeyL', main:'l', shift:'L', jp:'り', finger:2, cls:'home' },
+    { code:'Semicolon', main:';', shift:'+', jp:'れ', finger:1, cls:'home' },
+    { code:'Quote', main:':', shift:'*', jp:'け', finger:1, cls:'jpkey' },
+    { code:'Backslash', main:']', shift:'}', jp:'む', finger:1, cls:'jpkey' },
+  ],
+  [
+    { code:'ShiftLeft', main:'Shift', shift:'', jp:'', finger:8, cls:'w225 mod' },
+    { code:'KeyZ', main:'z', shift:'Z', jp:'つ', finger:8 },
+    { code:'KeyX', main:'x', shift:'X', jp:'さ', finger:7 },
+    { code:'KeyC', main:'c', shift:'C', jp:'そ', finger:6 },
+    { code:'KeyV', main:'v', shift:'V', jp:'ひ', finger:5 },
+    { code:'KeyB', main:'b', shift:'B', jp:'こ', finger:5 },
+    { code:'KeyN', main:'n', shift:'N', jp:'み', finger:4 },
+    { code:'KeyM', main:'m', shift:'M', jp:'も', finger:4 },
+    { code:'Comma', main:',', shift:'<', jp:'ね', finger:3 },
+    { code:'Period', main:'.', shift:'>', jp:'る', finger:2 },
+    { code:'Slash', main:'/', shift:'?', jp:'め', finger:1 },
+    { code:'IntlRo', main:'\\', shift:'_', jp:'ろ', finger:1, cls:'jpkey' },
+    { code:'ShiftRight', main:'Shift', shift:'', jp:'', finger:1, cls:'w175 mod' },
+  ],
+  [
+    { code:'ControlLeft', main:'Ctrl', shift:'', jp:'', finger:0, cls:'w15 mod' },
+    { code:'MetaLeft', main:'Win', shift:'', jp:'', finger:0, cls:'mod' },
+    { code:'AltLeft', main:'Alt', shift:'', jp:'', finger:0, cls:'mod' },
+    { code:'NonConvert', main:'無変換', shift:'', jp:'', finger:0, cls:'w15 jpkey' },
+    { code:'Space', main:'space', shift:'', jp:'', finger:0, cls:'w6' },
+    { code:'Convert', main:'変換', shift:'', jp:'', finger:0, cls:'w15 jpkey' },
+    { code:'KanaMode', main:'かな', shift:'', jp:'', finger:0, cls:'jpkey' },
+    { code:'AltRight', main:'Alt', shift:'', jp:'', finger:0, cls:'mod' },
+    { code:'ContextMenu', main:'☰', shift:'', jp:'', finger:0, cls:'mod' },
+    { code:'ControlRight', main:'Ctrl', shift:'', jp:'', finger:0, cls:'w15 mod' },
+  ],
+];
+
+const codeMap = {};
+rows.flat().forEach(k => { codeMap[k.code] = k; });
+
+const KANA2CODE = {};
+rows.flat().forEach(k => {
+  if (k.jp && k.jp.length === 1 && k.jp !== '゛' && k.jp !== '゜') {
+    if (!(k.jp in KANA2CODE)) KANA2CODE[k.jp] = k.code;
+  }
+});
+
+const DAKUTEN_CODE = 'BracketLeft';
+const HANDAKU_CODE = 'BracketRight';
+const DAKU = {
+  'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ',
+  'ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ',
+  'だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と',
+  'ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ',
+  'ゔ':'う',
+};
+const HANDAKU = { 'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ' };
+const SMALL = {
+  'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お',
+  'ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ','を':'わ',
+};
+
+function toHira(ch) {
+  const c = ch.charCodeAt(0);
+  if (c >= 0x30A1 && c <= 0x30F6) return String.fromCharCode(c - 0x60);
+  return ch;
+}
+
+function keyKanaLabel(code) {
+  const k = codeMap[code];
+  return k ? (k.jp || k.main) : code;
+}
+
+function kanaToKeys(ch) {
+  const h = toHira(ch);
+  if (DAKU[h]) {
+    const b = KANA2CODE[DAKU[h]];
+    if (!b) return null;
+    return [
+      { code: b, shift: false, label: DAKU[h] },
+      { code: DAKUTEN_CODE, shift: false, label: '゛' },
+    ];
+  }
+  if (HANDAKU[h]) {
+    const b = KANA2CODE[HANDAKU[h]];
+    if (!b) return null;
+    return [
+      { code: b, shift: false, label: HANDAKU[h] },
+      { code: HANDAKU_CODE, shift: false, label: '゜' },
+    ];
+  }
+  if (SMALL[h]) {
+    const b = KANA2CODE[SMALL[h]];
+    if (!b) return null;
+    return [{ code: b, shift: true, label: SMALL[h] }];
+  }
+  if (KANA2CODE[h]) return [{ code: KANA2CODE[h], shift: false, label: h }];
+  if (h === '、') return [{ code: 'Comma', shift: false, label: '、' }];
+  if (h === '。') return [{ code: 'Period', shift: false, label: '。' }];
+  if (h === '　' || h === ' ') return [{ code: 'Space', shift: false, label: 'space' }];
+  return null;
+}
+
+function kanaSteps(str) {
+  const steps = [];
+  for (const ch of str) {
+    steps.push({ disp: ch, keys: kanaToKeys(ch) || [] });
+  }
+  return steps;
+}
+
+/* keyboard render */
+const kb = document.getElementById('kb');
+const keyEls = {};
+
+function renderKB() {
+  kb.innerHTML = '';
+  rows.forEach(r => {
+    const rd = document.createElement('div');
+    rd.className = 'krow';
+    r.forEach(k => {
+      const el = document.createElement('div');
+      el.className = 'key ' + (k.cls || '');
+      el.dataset.code = k.code;
+      const top = document.createElement('div');
+      top.className = 'top';
+      top.textContent = k.shift || '';
+      const main = document.createElement('div');
+      main.className = 'main';
+      main.textContent = k.main;
+      const jp = document.createElement('div');
+      jp.className = 'jp';
+      jp.textContent = k.jp || '';
+      el.appendChild(top);
+      el.appendChild(main);
+      el.appendChild(jp);
+      if (k.finger !== undefined && !(k.cls || '').includes('mod') && k.code !== 'Space') {
+        const bar = document.createElement('div');
+        bar.className = 'fbar';
+        bar.style.background = colorFor(k.finger);
+        el.appendChild(bar);
+      }
+      el.addEventListener('mousedown', () => onVirtualKey(k));
+      rd.appendChild(el);
+      keyEls[k.code] = el;
+    });
+    kb.appendChild(rd);
+  });
+  applyToggles();
+}
+
+function applyToggles() {
+  const showF = document.getElementById('tgFinger').checked;
+  const showJ = document.getElementById('tgJp').checked;
+  kb.querySelectorAll('.fbar').forEach(b => { b.style.display = showF ? 'block' : 'none'; });
+  kb.querySelectorAll('.jp').forEach(j => { j.style.display = showJ ? 'block' : 'none'; });
+}
+
+document.getElementById('tgFinger').onchange = applyToggles;
+document.getElementById('tgJp').onchange = applyToggles;
+
+function clearHighlights() {
+  Object.values(keyEls).forEach(e => e.classList.remove('next'));
+}
+
+function pressFeedback(code) {
+  const e = keyEls[code];
+  if (e) {
+    e.classList.add('press');
+    setTimeout(() => e.classList.remove('press'), 90);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m]));
+}
+
+/* lessons */
+const LESSONS = [
+  {
+    id: 'a', title: 'あ行', tag: '基礎',
+    hint: 'あ行は数字段の <b>3〜6</b> キー。ローマ字の配置とは全く違うので、刻印を見ながら覚えましょう。',
+    items: ['あいうえお'],
+  },
+  {
+    id: 'ka', title: 'か行・さ行', tag: '基礎',
+    hint: '「か」は T、「さ」は X など、バラバラな位置にあります。キーボードのハイライトを頼りに。',
+    items: ['かきくけこ', 'さしすせそ'],
+  },
+  {
+    id: 'ta', title: 'た行・な行・は行', tag: '基礎',
+    hint: '「た」は Q、「つ」は Z、「は」は F。ホームポジション周辺が多い行です。',
+    items: ['たちつてと', 'なにぬねの', 'はひふへほ'],
+  },
+  {
+    id: 'ma', title: 'ま行〜わ行', tag: '基礎',
+    hint: '「ん」は Y キー。「を」は <b>Shift＋わ</b> で入力します。',
+    items: ['まみむめも', 'やゆよ', 'らりるれろ', 'わをん'],
+  },
+  {
+    id: 'daku', title: '濁音（゛）', tag: '濁点',
+    hint: '濁点は基本のかなを打った<b>あとに「゛」キー</b>（@ の位置）。「が」＝ か → ゛。',
+    items: ['がぎぐげご', 'ざじずぜぞ', 'だぢづでど', 'ばびぶべぼ'],
+  },
+  {
+    id: 'han', title: '半濁音（゜）', tag: '半濁点',
+    hint: '半濁点は「゜」キー（[ の位置）を後で押す。「ぱ」＝ は → ゜。',
+    items: ['ぱぴぷぺぽ'],
+  },
+  {
+    id: 'small', title: '小さいかな・拗音', tag: 'Shift',
+    hint: '小さい「ゃゅょっ」は <b>Shift＋</b>元のかな。「きゃ」は き → Shift＋や の順です。',
+    items: ['ゃゅょ', 'っ', 'きゃ', 'しゅ', 'ちょ', 'きょう'],
+  },
+  {
+    id: 'words', title: 'よく使う単語', tag: '単語',
+    hint: '濁点・小書き・拗音を組み合わせた実践練習です。',
+    items: [
+      { k: 'にほん', m: '日本' },
+      { k: 'がっこう', m: '学校' },
+      { k: 'きって', m: '切手' },
+      { k: 'でんわ', m: '電話' },
+      { k: 'べんきょう', m: '勉強' },
+      { k: 'しんぶん', m: '新聞' },
+      { k: 'ありがとう', m: 'ありがとう' },
+      { k: 'おはよう', m: 'おはよう' },
+    ],
+  },
+  {
+    id: 'kata', title: 'カタカナ', tag: 'カナ',
+    hint: 'カタカナ表示でも押すキーは同じです。長音「ー」は ^ キー（¥ の左）。',
+    items: [
+      { k: 'コーヒー', m: 'コーヒー' },
+      { k: 'テレビ', m: 'テレビ' },
+      { k: 'パソコン', m: 'パソコン' },
+      { k: 'メール', m: 'メール' },
+      { k: 'ジュース', m: 'ジュース' },
+    ],
+  },
+  {
+    id: 'sent', title: '短文', tag: '総合',
+    hint: '句読点「、」「。」も含む総合練習。スペースはスペースキーです。',
+    items: [
+      { k: 'こんにちは。', m: 'こんにちは。' },
+      { k: 'おはようございます。', m: 'おはようございます。' },
+      { k: 'にほんごをべんきょうしています。', m: '日本語を勉強しています。' },
+    ],
+  },
+];
+
+const grid = document.getElementById('lessonGrid');
+LESSONS.forEach(L => {
+  const el = document.createElement('div');
+  el.className = 'lesson';
+  const preview = L.items[0].k || L.items[0];
+  el.innerHTML = `<h3>${L.title}</h3><p>${preview} …</p><span class="tag">${L.tag}</span>`;
+  el.onclick = () => startLesson(L);
+  grid.appendChild(el);
+});
+
+/* practice engine */
+let kn = null;
+const targetEl = document.getElementById('target');
+const stepEl = document.getElementById('stepHint');
+const pickerEl = document.getElementById('picker');
+const practiceEl = document.getElementById('practice');
+
+function showPractice(show) {
+  pickerEl.classList.toggle('hidden', show);
+  practiceEl.classList.toggle('hidden', !show);
+}
+
+function startLesson(L) {
+  showPractice(true);
+  document.getElementById('pTitle').textContent = L.title;
+  document.getElementById('pHint').innerHTML = L.hint || '';
+  kn = {
+    items: L.items.map(x => typeof x === 'string' ? { k: x } : x),
+    idx: 0,
+    errors: 0,
+    typed: 0,
+    start: null,
+    finished: false,
+  };
+  knLoad(0);
+  knStats();
+}
+
+function knRender() {
+  let html = '';
+  kn.steps.forEach((s, idx) => {
+    const cls = idx < kn.si ? 'done' : idx === kn.si ? 'cur' : '';
+    html += `<span class="${cls}">${escapeHtml(s.disp)}</span>`;
+  });
+  targetEl.innerHTML = html;
+
+  clearHighlights();
+  const step = kn.steps[kn.si];
+  if (!step) { stepEl.textContent = ''; return; }
+  const kp = step.keys[kn.ki];
+  if (!kp) { stepEl.textContent = ''; return; }
+
+  keyEls[kp.code]?.classList.add('next');
+  if (kp.shift) {
+    keyEls.ShiftLeft?.classList.add('next');
+    keyEls.ShiftRight?.classList.add('next');
+  }
+
+  const parts = step.keys.map((k, i) => {
+    const nm = (k.shift ? 'Shift＋' : '') + keyKanaLabel(k.code);
+    return i === kn.ki
+      ? `<span style="color:#fff;background:var(--accent);border-radius:5px;padding:2px 8px">${nm}</span>`
+      : `<span style="opacity:.5">${nm}</span>`;
+  });
+  stepEl.innerHTML = `「${escapeHtml(step.disp)}」 ＝ ${parts.join(' → ')}`;
+}
+
+function knStats() {
+  document.getElementById('sProg').textContent = `${kn.idx + 1}/${kn.items.length}`;
+  document.getElementById('sErr').textContent = kn.errors;
+  const acc = kn.typed ? Math.max(0, Math.round((kn.typed - kn.errors) / kn.typed * 100)) : 100;
+  document.getElementById('sAcc').textContent = acc + '%';
+  if (kn.start) {
+    const mins = (performance.now() - kn.start) / 60000;
+    document.getElementById('sKpm').textContent = mins > 0 ? Math.round(kn.typed / mins) : 0;
+  }
+}
+
+function knHandle(code, shift) {
+  if (!kn || kn.finished) return;
+  if (!kn.start) kn.start = performance.now();
+
+  const step = kn.steps[kn.si];
+  if (!step) return;
+  const kp = step.keys[kn.ki];
+  if (!kp) return;
+
+  kn.typed++;
+  const ok = code === kp.code && (kp.shift ? shift : true);
+
+  if (!ok) {
+    kn.errors++;
+    const e = keyEls[code];
+    if (e) {
+      e.classList.add('wrong');
+      setTimeout(() => e.classList.remove('wrong'), 160);
+    }
+    const cur = targetEl.querySelector('.cur');
+    if (cur) {
+      cur.classList.add('err');
+      setTimeout(() => cur.classList.remove('err'), 160);
+    }
+    knStats();
+    return;
+  }
+
+  kn.ki++;
+  if (kn.ki >= step.keys.length) {
+    kn.ki = 0;
+    kn.si++;
+  }
+
+  if (kn.si >= kn.steps.length) {
+    if (kn.idx + 1 < kn.items.length) {
+      knLoad(kn.idx + 1);
+      knStats();
+      return;
+    }
+    knFinish();
+    return;
+  }
+
+  knRender();
+  knStats();
+}
+
+function knLoad(i) {
+  kn.idx = i;
+  const it = kn.items[i];
+  kn.steps = kanaSteps(it.k);
+  kn.si = 0;
+  kn.ki = 0;
+  document.getElementById('meaning').textContent = it.m ? '— ' + it.m : '';
+  knRender();
+}
+
+function knFinish() {
+  kn.finished = true;
+  clearHighlights();
+  const acc = kn.typed ? Math.round((kn.typed - kn.errors) / kn.typed * 100) : 100;
+  const mins = kn.start ? (performance.now() - kn.start) / 60000 : 0;
+  const kpm = mins > 0 ? Math.round(kn.typed / mins) : 0;
+  targetEl.innerHTML = `<span style="color:var(--good);font-size:26px;font-weight:700">✓ 完了！おつかれさま</span>
+    <span style="font-size:15px;color:var(--muted)">　${kpm} 打/分 · 正確率 ${acc}% · ミス ${kn.errors}</span>`;
+  stepEl.innerHTML = '';
+  document.getElementById('meaning').textContent = '';
+  knStats();
+}
+
+function onVirtualKey(k) {
+  pressFeedback(k.code);
+  if (kn && !kn.finished) knHandle(k.code, true);
+}
+
+document.addEventListener('keydown', ev => {
+  const el = keyEls[ev.code];
+  if (el) pressFeedback(el.dataset.code);
+
+  if (!kn || kn.finished) return;
+  if (ev.code === 'ShiftLeft' || ev.code === 'ShiftRight') return;
+
+  ev.preventDefault();
+  knHandle(ev.code, ev.shiftKey);
+});
+
+document.getElementById('btnBack').onclick = () => {
+  showPractice(false);
+  kn = null;
+  clearHighlights();
+};
+
+document.getElementById('btnReset').onclick = () => {
+  if (!kn) return;
+  kn.errors = 0;
+  kn.typed = 0;
+  kn.start = null;
+  kn.finished = false;
+  knLoad(0);
+  knStats();
+};
+
+renderKB();
+</script>
+</body>
+</html>
