@@ -164,6 +164,17 @@
   .btn:hover { filter: brightness(1.08); }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+  .lesson-nav {
+    margin-top: 14px;
+    font-size: 13px;
+  }
+  .lesson-next {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .lesson-next:hover { text-decoration: underline; }
+
   .hidden { display: none !important; }
 
   /* keyboard */
@@ -304,6 +315,7 @@
       <div class="stat"><b id="sErr">0</b><span>ミス</span></div>
     </div>
     <div class="hint" id="pHint"></div>
+    <div class="lesson-nav"><a href="#" id="nextLessonLink" class="lesson-next hidden">次のレッスンに進む →</a></div>
   </div>
 
   <div class="card">
@@ -647,6 +659,7 @@ const targetEl = document.getElementById('target');
 const stepEl = document.getElementById('stepHint');
 const pickerEl = document.getElementById('picker');
 const practiceEl = document.getElementById('practice');
+const nextLessonLink = document.getElementById('nextLessonLink');
 
 function showPractice(show) {
   pickerEl.classList.toggle('hidden', show);
@@ -655,9 +668,11 @@ function showPractice(show) {
 
 function startLesson(L) {
   showPractice(true);
+  const lessonIndex = LESSONS.indexOf(L);
   document.getElementById('pTitle').textContent = L.title;
   document.getElementById('pHint').innerHTML = L.hint || '';
   kn = {
+    lessonIndex,
     items: L.items.map(x => typeof x === 'string' ? { k: x } : x),
     idx: 0,
     errors: 0,
@@ -665,8 +680,20 @@ function startLesson(L) {
     start: null,
     finished: false,
   };
+  updateNextLessonLink();
   knLoad(0);
   knStats();
+}
+
+function updateNextLessonLink() {
+  const next = LESSONS[kn.lessonIndex + 1];
+  nextLessonLink.classList.toggle('hidden', !next);
+  if (!next) return;
+  nextLessonLink.textContent = `次のレッスン「${next.title}」に進む →`;
+  nextLessonLink.onclick = ev => {
+    ev.preventDefault();
+    startLesson(next);
+  };
 }
 
 function knRender() {
@@ -800,6 +827,7 @@ document.getElementById('btnBack').onclick = () => {
   showPractice(false);
   kn = null;
   clearHighlights();
+  nextLessonLink.classList.add('hidden');
 };
 
 document.getElementById('btnReset').onclick = () => {
