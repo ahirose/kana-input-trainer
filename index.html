@@ -685,14 +685,24 @@ function startLesson(L) {
   knStats();
 }
 
+function getNextLesson() {
+  if (!kn) return null;
+  return LESSONS[kn.lessonIndex + 1] ?? null;
+}
+
+function continueToNextLesson() {
+  const next = getNextLesson();
+  if (next) startLesson(next);
+}
+
 function updateNextLessonLink() {
-  const next = LESSONS[kn.lessonIndex + 1];
+  const next = getNextLesson();
   nextLessonLink.classList.toggle('hidden', !next);
   if (!next) return;
   nextLessonLink.textContent = `次のレッスン「${next.title}」に進む →`;
   nextLessonLink.onclick = ev => {
     ev.preventDefault();
-    startLesson(next);
+    continueToNextLesson();
   };
 }
 
@@ -800,9 +810,18 @@ function knFinish() {
   const acc = kn.typed ? Math.round((kn.typed - kn.errors) / kn.typed * 100) : 100;
   const mins = kn.start ? (performance.now() - kn.start) / 60000 : 0;
   const kpm = mins > 0 ? Math.round(kn.typed / mins) : 0;
+  const next = getNextLesson();
   targetEl.innerHTML = `<span style="color:var(--good);font-size:26px;font-weight:700">✓ 完了！おつかれさま</span>
     <span style="font-size:15px;color:var(--muted)">　${kpm} 打/分 · 正確率 ${acc}% · ミス ${kn.errors}</span>`;
-  stepEl.innerHTML = '';
+  if (next) {
+    stepEl.innerHTML = `<button type="button" class="btn" id="btnNextLesson">次のレッスン「${escapeHtml(next.title)}」へ →</button>
+      <span style="font-size:13px;color:var(--muted);margin-left:12px">Enter キーでも続けられます</span>`;
+    document.getElementById('btnNextLesson').onclick = continueToNextLesson;
+    updateNextLessonLink();
+  } else {
+    stepEl.innerHTML = '<span style="color:var(--muted);font-size:14px">すべてのレッスンを完了しました！</span>';
+    nextLessonLink.classList.add('hidden');
+  }
   document.getElementById('meaning').textContent = '';
   knStats();
 }
@@ -816,7 +835,16 @@ document.addEventListener('keydown', ev => {
   const el = keyEls[ev.code];
   if (el) pressFeedback(el.dataset.code);
 
-  if (!kn || kn.finished) return;
+  if (!kn) return;
+
+  if (kn.finished) {
+    if (ev.code === 'Enter' && getNextLesson()) {
+      ev.preventDefault();
+      continueToNextLesson();
+    }
+    return;
+  }
+
   if (ev.code === 'ShiftLeft' || ev.code === 'ShiftRight') return;
 
   ev.preventDefault();
